@@ -5,18 +5,45 @@ const timeout = require('delay');
 
 // CLI Args
 const url = argv.url || 'https://www.google.com';
-const format = argv.format === 'jpeg' ? 'jpeg' : 'png';
 const viewportWidth = argv.viewportWidth || 1920;
 let viewportHeight = argv.viewportHeight || 1080;
 const delay = argv.delay || 0;
 const userAgent = argv.userAgent;
 const fullPage = argv.full;
-const outputDir = argv.outputDir || './';
-const output = argv.output || `output.${format === 'png' ? 'png' : 'jpg'}`;
 
-init();
+let fs = require('fs'),
+    path = require('path'),
+    filePath = path.join(__dirname, 'list.txt');
 
-async function init() {
+
+async function start() {
+  fs.readFile(filePath, {encoding: 'utf-8'}, async function (err, data) {
+    if (err) {
+      console.log(err);
+      return;
+    }
+
+    let out = {};
+
+    let array = data.split("\n").filter(value => value.length > 0).map(value => value.trim());
+    for (let line of array) {
+      let name_url = line.split(" ").filter(value => value.length > 0).map(value => value.trim());
+      await init(name_url[1], name_url[0]);
+      out[name_url[0]] = name_url[1];
+    }
+
+    const buffer = new Buffer(JSON.stringify(out, null, 2));
+    const path = `capture/files.json`;
+    await file.writeFile(path, buffer);
+
+    // require('child_process').exec('start "" "./capture/"');
+  });
+}
+start();
+
+// require('child_process').exec('start "" "capture\\"');
+
+async function init(url, output) {
   let client;
   try {
     // Start the Chrome Debugging Protocol
@@ -82,7 +109,7 @@ async function init() {
     }
 
     const screenshot = await Page.captureScreenshot({
-      format,
+      format: 'png',
       fromSurface: true,
       clip: {
         width: viewportWidth,
@@ -92,7 +119,7 @@ async function init() {
     });
 
     const buffer = new Buffer(screenshot.data, 'base64');
-    const path = `${outputDir + output}`;
+    const path = `capture/${output}.png`;
     await file.writeFile(path, buffer, 'base64');
     console.log('Screenshot saved');
     client.close();
