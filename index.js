@@ -4,7 +4,6 @@ const file = require('mz/fs');
 const timeout = require('delay');
 
 // CLI Args
-const url = argv.url || 'https://www.google.com';
 const viewportWidth = argv.viewportWidth || 1920;
 let viewportHeight = argv.viewportHeight || 1080;
 const delay = argv.delay || 0;
@@ -14,7 +13,18 @@ const fullPage = argv.full;
 let fs = require('fs'),
     path = require('path'),
     filePath = path.join(__dirname, 'list.txt');
+let dateFormat = require('dateformat');
 
+function ensureDirSync(dirpath) {
+  try {
+    fs.mkdirSync(dirpath, {recursive: true})
+  } catch (err) {
+    if (err.code !== 'EEXIST') throw err
+  }
+}
+let datefolder = dateFormat(new Date(), "yyyymmdd");
+let basefolder = `history\\${datefolder}`;
+ensureDirSync(basefolder);
 
 async function start() {
   fs.readFile(filePath, {encoding: 'utf-8'}, async function (err, data) {
@@ -33,15 +43,14 @@ async function start() {
     }
 
     const buffer = new Buffer(JSON.stringify(out, null, 2));
-    const path = `capture/files.json`;
+    const path = `${basefolder}/files.json`;
     await file.writeFile(path, buffer);
 
-    // require('child_process').exec('start "" "./capture/"');
+    require('child_process').exec(`start "" "${basefolder}"`);
   });
 }
-start();
 
-// require('child_process').exec('start "" "capture\\"');
+start();
 
 async function init(url, output) {
   let client;
@@ -119,7 +128,7 @@ async function init(url, output) {
     });
 
     const buffer = new Buffer(screenshot.data, 'base64');
-    const path = `capture/${output}.png`;
+    const path = `${basefolder}/${output}.png`;
     await file.writeFile(path, buffer, 'base64');
     console.log('Screenshot saved');
     client.close();
