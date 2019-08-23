@@ -22,8 +22,8 @@ function ensureDirSync(dirpath) {
     if (err.code !== 'EEXIST') throw err
   }
 }
-let datefolder = dateFormat(new Date(), "yyyymmdd");
-let basefolder = `history\\${datefolder}`;
+let datestring = dateFormat(new Date(), "yyyymmdd");
+let basefolder = `history\\${datestring}`;
 ensureDirSync(basefolder);
 
 async function start() {
@@ -128,7 +128,7 @@ async function init(url, output) {
     });
 
     const buffer = new Buffer(screenshot.data, 'base64');
-    const path = `${basefolder}/${output}.png`;
+    const path = `${basefolder}/${output}_${datestring}.png`;
     await file.writeFile(path, buffer, 'base64');
     console.log('Screenshot saved');
     client.close();
