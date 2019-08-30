@@ -24,6 +24,7 @@ function ensureDirSync(dirpath) {
 }
 let datestring = dateFormat(new Date(), "yyyymmdd");
 let basefolder = `history\\${datestring}`;
+ensureDirSync("history");
 ensureDirSync(basefolder);
 
 async function start() {
