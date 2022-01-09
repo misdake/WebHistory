@@ -99,7 +99,7 @@ async function init(url, output) {
     // Wait for page load event to take screenshot
     await Page.loadEventFired();
 
-    await timeout(delay);
+    await timeout(5000);
 
     // If the `full` CLI option was passed, we need to measure the height of
     // the rendered page and use Emulation.setVisibleSize

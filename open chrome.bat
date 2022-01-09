@@ -1,1 +1,1 @@
-start "" "C:\Program Files (x86)\Google\Chrome\Application\chrome.exe" --user-data-dir="userdata"
+start "" "C:\Program Files\Google\Chrome\Application\chrome2.exe" --user-data-dir="D:\WebHistory\userdata"
