@@ -40,7 +40,7 @@ router.get('/names', (req, res) => {
 });
 
 // Route to return all dates for a specific name
-router.get('/name-to-date/:name', (req, res) => {
+router.get('/date/:name', (req, res) => {
     const { name } = req.params;
     const dates = nameToDateCache?.[name] || [];
     if (dates.length === 0) {

@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Tester</title>
+</head>
+<body>
+<h1>Test APIs</h1>
+
+<!-- Test Name APIs -->
+<section>
+    <h2>Name APIs</h2>
+    <button id="fetch-names">Fetch All Names</button>
+    <button id="refresh-cache">Refresh Cache</button>
+    <br><br>
+    <label for="name">Get Dates by Name:</label>
+    <input type="text" id="name" placeholder="Enter Name">
+    <button id="fetch-dates">Fetch Dates</button>
+    <div id="name-output"></div>
+</section>
+<hr>
+
+<!-- Test Screenshot APIs -->
+<section>
+    <h2>Screenshot APIs</h2>
+    <label for="date">Screenshots by Date:</label>
+    <input type="text" id="date" placeholder="Enter Date (e.g., YYYYMMDD)">
+    <button id="fetch-screenshots">Fetch Screenshots</button>
+    <br><br>
+    <label for="file-name">Get Screenshot File:</label>
+    <input type="text" id="file-name" placeholder="Enter Name">
+    <input type="text" id="file-date" placeholder="Enter Date">
+    <button id="fetch-screenshot-file">Fetch Screenshot</button>
+    <div id="screenshot-output"></div>
+</section>
+
+<script>
+    const BASE_URL = 'http://localhost:3000';
+
+    // Fetch all names
+    document.getElementById('fetch-names').addEventListener('click', async () => {
+        try {
+            const response = await fetch(`${BASE_URL}/name/names`);
+            const data = await response.json();
+            document.getElementById('name-output').textContent = JSON.stringify(data, null, 2);
+        } catch (err) {
+            document.getElementById('name-output').textContent = `Error: ${err.message}`;
+        }
+    });
+
+    // Refresh cache
+    document.getElementById('refresh-cache').addEventListener('click', async () => {
+        try {
+            const response = await fetch(`${BASE_URL}/name/refresh`, {method: 'POST'});
+            const data = await response.json();
+            document.getElementById('name-output').textContent = JSON.stringify(data, null, 2);
+        } catch (err) {
+            document.getElementById('name-output').textContent = `Error: ${err.message}`;
+        }
+    });
+
+    // Fetch dates by name
+    document.getElementById('fetch-dates').addEventListener('click', fetchDatesByName);
+    document.getElementById('name').addEventListener('keyup', (event) => {
+        if (event.key === "Enter") {
+            fetchDatesByName();
+        }
+    });
+
+    async function fetchDatesByName() {
+        const name = document.getElementById('name').value;
+        if (!name) {
+            alert('Please enter a name');
+            return;
+        }
+        try {
+            const response = await fetch(`${BASE_URL}/name/date/${name}`);
+            const data = await response.json();
+            document.getElementById('name-output').textContent = JSON.stringify(data, null, 2);
+        } catch (err) {
+            document.getElementById('name-output').textContent = `Error: ${err.message}`;
+        }
+    }
+
+    // Fetch screenshots by date
+    document.getElementById('fetch-screenshots').addEventListener('click', fetchScreenshotsByDate);
+    document.getElementById('date').addEventListener('keyup', (event) => {
+        if (event.key === "Enter") {
+            fetchScreenshotsByDate();
+        }
+    });
+
+    async function fetchScreenshotsByDate() {
+        const date = document.getElementById('date').value;
+        if (!date) {
+            alert('Please enter a date');
+            return;
+        }
+        try {
+            const response = await fetch(`${BASE_URL}/screenshot/date/${date}`);
+            const data = await response.json();
+            document.getElementById('screenshot-output').textContent = JSON.stringify(data, null, 2);
+        } catch (err) {
+            document.getElementById('screenshot-output').textContent = `Error: ${err.message}`;
+        }
+    }
+
+    // Fetch screenshot file
+    document.getElementById('fetch-screenshot-file').addEventListener('click', fetchScreenshotFile);
+    document.getElementById('file-name').addEventListener('keyup', handleKeyPressForFile);
+    document.getElementById('file-date').addEventListener('keyup', handleKeyPressForFile);
+
+    async function fetchScreenshotFile() {
+        const name = document.getElementById('file-name').value;
+        const date = document.getElementById('file-date').value;
+        if (!name || !date) {
+            alert('Please enter both name and date');
+            return;
+        }
+        try {
+            const response = await fetch(`${BASE_URL}/screenshot/file/${date}/${name}`);
+            if (response.ok) {
+                const blob = await response.blob();
+                const url = URL.createObjectURL(blob);
+                const img = document.createElement('img');
+                img.src = url;
+                img.alt = `${name} - ${date}`;
+                img.style.maxWidth = '300px';
+                document.getElementById('screenshot-output').innerHTML = '';
+                document.getElementById('screenshot-output').appendChild(img);
+            } else {
+                const error = await response.json();
+                document.getElementById('screenshot-output').textContent = JSON.stringify(error, null, 2);
+            }
+        } catch (err) {
+            document.getElementById('screenshot-output').textContent = `Error: ${err.message}`;
+        }
+    }
+
+    function handleKeyPressForFile(event) {
+        if (event.key === "Enter") {
+            fetchScreenshotFile();
+        }
+    }
+</script>
+</body>
+</html>

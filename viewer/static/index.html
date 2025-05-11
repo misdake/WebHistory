@@ -1,0 +1,240 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Fetch Names, Dates, and Screenshots</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      height: 100vh; /* Full height of the viewport */
+    }
+
+    select, button {
+      padding: 10px;
+      font-size: 16px;
+      margin: 10px;
+    }
+
+    .date-container {
+      display: flex;
+      align-items: center;
+      padding: 10px 20px;
+      background: #f9f9f9;
+      border-bottom: 1px solid #ddd;
+    }
+
+    .scroll-buttons {
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+    }
+
+    .date-scroll {
+      overflow-x: hidden;
+      white-space: nowrap;
+      flex: 1;
+      border: 1px solid #ddd;
+      border-radius: 5px;
+      padding: 10px;
+      margin: 0 10px;
+    }
+
+    .date-item {
+      display: inline-block;
+      padding: 8px 15px;
+      margin-right: 10px;
+      border: 1px solid #ddd;
+      background-color: #f0f0f0;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+
+    .date-item:hover {
+      background-color: #e0e0e0;
+    }
+
+    .date-item.active {
+      background-color: #4CAF50;
+      color: white;
+      font-weight: bold;
+    }
+
+    .screenshot-container {
+      flex: 1; /* Occupy remaining page height */
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 300px; /* Minimum height for usability */
+      background: #000;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .screenshot-container img {
+      max-width: 100%; /* Scale down to fit in width */
+      max-height: 100%; /* Scale down to fit in height */
+      object-fit: contain; /* Maintain aspect ratio */
+    }
+
+    .error-message {
+      color: white;
+      font-size: 18px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+<div class="date-container">
+  <!-- Dropdown for Names -->
+  <label for="name-select">Select a name:</label>
+  <select id="name-select">
+    <option value="" selected disabled>Loading names...</option>
+  </select>
+
+  <!-- Scroll Buttons and Date List -->
+  <button class="scroll-buttons" id="scroll-oldest">Oldest</button>
+  <div class="date-scroll" id="date-scroll">
+    <!-- Dates will be dynamically added here -->
+  </div>
+  <button class="scroll-buttons" id="scroll-newest">Newest</button>
+</div>
+
+<!-- Screenshot Display -->
+<div class="screenshot-container" id="screenshot-container">
+  <!-- Screenshot or error message will display here -->
+  <p id="screenshot-placeholder" class="error-message">Please select a name and date to display the screenshot.</p>
+</div>
+
+<script>
+  const BASE_URL = 'http://localhost:3000'; // API Base URL
+  const nameSelect = document.getElementById('name-select');
+  const dateScrollContainer = document.getElementById('date-scroll');
+  const scrollOldestButton = document.getElementById('scroll-oldest');
+  const scrollNewestButton = document.getElementById('scroll-newest');
+  const screenshotContainer = document.getElementById('screenshot-container');
+  const screenshotPlaceholder = document.getElementById('screenshot-placeholder');
+
+  // Fetch and populate all names
+  async function fetchNames() {
+    try {
+      const response = await fetch(`${BASE_URL}/name/names`);
+      const data = await response.json();
+      populateNames(data.names);
+    } catch (error) {
+      console.error('Error fetching names:', error);
+      nameSelect.innerHTML = `<option disabled>Error loading names</option>`;
+    }
+  }
+
+  // Populate names into the dropdown
+  function populateNames(names) {
+    nameSelect.innerHTML = `<option value="" selected disabled>Select a name</option>`;
+    names.forEach(name => {
+      const option = document.createElement('option');
+      option.value = name;
+      option.textContent = name;
+      nameSelect.appendChild(option);
+    });
+  }
+
+  // Fetch and display dates for the selected name
+  async function fetchDates(name) {
+    try {
+      const response = await fetch(`${BASE_URL}/name/date/${name}`);
+      const data = await response.json();
+      displayDates(data.dates);
+      if (data.dates.length > 0) {
+        // Auto-select the newest (latest) date
+        handleDateSelection(data.dates[0], name);
+      }
+    } catch (error) {
+      console.error('Error fetching dates:', error);
+      dateScrollContainer.innerHTML = '<p class="error-message">Error fetching dates.</p>';
+    }
+  }
+
+  // Display dates as scrollable items
+  function displayDates(dates) {
+    dateScrollContainer.innerHTML = '';
+    if (dates.length === 0) {
+      dateScrollContainer.innerHTML = '<p class="error-message">No dates available for the selected name.</p>';
+      return;
+    }
+    dates.forEach((date, index) => {
+      const div = document.createElement('div');
+      div.textContent = date;
+      div.className = 'date-item';
+      if (index === 0) div.classList.add('active'); // Auto-select the newest date
+      div.addEventListener('click', () => handleDateSelection(date, nameSelect.value));
+      dateScrollContainer.appendChild(div);
+    });
+  }
+
+  // Handle date selection
+  async function handleDateSelection(date, name) {
+    // Highlight the selected date
+    const dateItems = document.querySelectorAll('.date-item');
+    dateItems.forEach(item => item.classList.remove('active'));
+    const selectedDateItem = Array.from(dateItems).find(item => item.textContent === date);
+    selectedDateItem?.classList.add('active');
+
+    // Fetch and display the screenshot for the selected date
+    await fetchScreenshot(name, date);
+  }
+
+  // Fetch and display the screenshot for the given name and date
+  async function fetchScreenshot(name, date) {
+    try {
+      const response = await fetch(`${BASE_URL}/screenshot/file/${date}/${name}`);
+      if (response.ok) {
+        const blob = await response.blob();
+        const imgUrl = URL.createObjectURL(blob);
+        showScreenshot(imgUrl);
+      } else {
+        const error = await response.json();
+        showError(error.error || 'Screenshot not found.');
+      }
+    } catch (error) {
+      console.error('Error fetching screenshot:', error);
+      showError('Error fetching screenshot.');
+    }
+  }
+
+  // Display the screenshot
+  function showScreenshot(url) {
+    screenshotPlaceholder.style.display = 'none'; // Hide placeholder
+    screenshotContainer.innerHTML = `<img src="${url}" alt="Screenshot">`;
+  }
+
+  // Display an error message
+  function showError(message) {
+    screenshotContainer.innerHTML = `<p class="error-message">${message}</p>`;
+  }
+
+  // Scroll handlers for Oldest and Newest buttons
+  scrollOldestButton.addEventListener('click', () => {
+    dateScrollContainer.scrollTo({ left: 0, behavior: 'smooth' });
+  });
+  scrollNewestButton.addEventListener('click', () => {
+    dateScrollContainer.scrollTo({ left: dateScrollContainer.scrollWidth, behavior: 'smooth' });
+  });
+
+  // Event listener for name selection
+  nameSelect.addEventListener('change', (e) => {
+    const selectedName = e.target.value;
+    fetchDates(selectedName);
+    screenshotPlaceholder.style.display = 'block'; // Show placeholder
+    screenshotPlaceholder.textContent = 'Please select a date to display the screenshot.';
+  });
+
+  // Initial call to fetch names
+  fetchNames();
+</script>
+</body>
+</html>
