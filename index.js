@@ -62,12 +62,10 @@ async function init(url, output) {
     // Verify version
     const { Browser } = await CDP.Version();
     const browserVersion = Browser.match(/\/(\d+)/)[1];
-    if (Number(browserVersion) !== 60) {
-      console.warn(`This script requires Chrome 60, however you are using version ${browserVersion}. The script is not guaranteed to work and you may need to modify it.`);
-    }
+    console.log("Chrome version", browserVersion);
 
     // Extract used DevTools domains.
-    const {DOM, Emulation, Network, Page, Runtime} = client;
+    const {DOM, Emulation, Network, Page} = client;
 
     // Enable events on domains we are interested in.
     await Page.enable();
