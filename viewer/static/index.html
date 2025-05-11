@@ -35,19 +35,21 @@
     }
 
     .date-scroll {
-      overflow-x: hidden;
+      overflow-x: scroll;
+      scrollbar-width: thin;
       white-space: nowrap;
       flex: 1;
       border: 1px solid #ddd;
       border-radius: 5px;
-      padding: 10px;
+      padding: 0 5px;
       margin: 0 10px;
+      min-height: 58px;
     }
 
     .date-item {
       display: inline-block;
       padding: 8px 15px;
-      margin-right: 10px;
+      margin: 5px;
       border: 1px solid #ddd;
       background-color: #f0f0f0;
       border-radius: 5px;
@@ -92,7 +94,7 @@
 <body>
 <div class="date-container">
   <!-- Dropdown for Names -->
-  <label for="name-select">Select a name:</label>
+  <label for="name-select" tabindex=-1>Select a name:</label>
   <select id="name-select">
     <option value="" selected disabled>Loading names...</option>
   </select>
@@ -277,6 +279,10 @@
       newActiveItem = activeDateItem.previousElementSibling;
     } else if (event.key === 'ArrowDown' || event.key === 'ArrowRight') {
       newActiveItem = activeDateItem.nextElementSibling;
+    } else if (event.key === 'Home') {
+      newActiveItem = document.querySelector('.date-item:first-child');
+    } else if (event.key === 'End') {
+      newActiveItem = document.querySelector('.date-item:last-child');
     }
 
     // If a new active item is found, scroll to it and select it
