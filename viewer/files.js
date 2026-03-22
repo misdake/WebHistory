@@ -9,8 +9,8 @@ async function parseFilesJson(path) {
 
 // Get path mappings for a specific date
 async function getScreenshotPaths(historyDir, date) {
-    const basePath = `${historyDir}/${date}`;
-    const filesJson = await parseFilesJson(`${basePath}/files.json`);
+    const basePath = path.join(historyDir, date);
+    const filesJson = await parseFilesJson(path.join(basePath, 'files.json'));
     const paths = Object.entries(filesJson).map(([name, url]) => {
         return {
             name,
