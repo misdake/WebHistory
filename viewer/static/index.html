@@ -74,7 +74,7 @@
       font-weight: 600;
       border: none;
       color: white;
-     cursor: pointer;
+      cursor: pointer;
       transition: all 0.2s;
       text-transform: uppercase;
       letter-spacing: 0.5px;
@@ -118,6 +118,8 @@
       display: flex;
       align-items: center;
       gap: 6px;
+      user-select: none;
+      -webkit-user-select: none;
     }
 
     .date-scroll::-webkit-scrollbar {
@@ -408,6 +410,77 @@
         handleDateSelection(newActiveItem);
       }
     });
+
+    // Add mouse drag to scroll functionality
+    let isDragging = false;
+    let startX = 0;
+    let scrollLeft = 0;
+    let lastX = 0;
+    let lastTime = 0;
+    let velocity = 0;
+    let animationId = null;
+
+    dateScrollContainer.addEventListener('mousedown', (e) => {
+      isDragging = true;
+      startX = e.pageX - dateScrollContainer.offsetLeft;
+      scrollLeft = dateScrollContainer.scrollLeft;
+      lastX = e.pageX;
+      lastTime = Date.now();
+      velocity = 0;
+      dateScrollContainer.style.cursor = 'grabbing';
+      if (animationId) cancelAnimationFrame(animationId);
+    });
+
+    dateScrollContainer.addEventListener('mouseleave', () => {
+      if (isDragging) {
+        isDragging = false;
+        startInertia();
+      }
+      dateScrollContainer.style.cursor = 'grab';
+    });
+
+    dateScrollContainer.addEventListener('mouseup', () => {
+      if (isDragging) {
+        isDragging = false;
+        startInertia();
+      }
+      dateScrollContainer.style.cursor = 'grab';
+    });
+
+    dateScrollContainer.addEventListener('mousemove', (e) => {
+      if (!isDragging) return;
+      e.preventDefault();
+      const x = e.pageX - dateScrollContainer.offsetLeft;
+      const walk = (x - startX) * 1.5;
+      dateScrollContainer.scrollLeft = scrollLeft - walk;
+
+      const now = Date.now();
+      const dt = now - lastTime;
+      if (dt > 0) {
+        velocity = (lastX - e.pageX) * 1.5;
+      }
+      lastX = e.pageX;
+      lastTime = now;
+    });
+
+    function startInertia() {
+      const friction = 0.95;
+      const minVelocity = 0.5;
+
+      function animate() {
+        if (Math.abs(velocity) < minVelocity) {
+          velocity = 0;
+          return;
+        }
+        dateScrollContainer.scrollLeft += velocity;
+        velocity *= friction;
+        animationId = requestAnimationFrame(animate);
+      }
+
+      animate();
+    }
+
+    dateScrollContainer.style.cursor = 'grab';
 
     // Fetch initial data (names) when the page loads
     fetchNames();
