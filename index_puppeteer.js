@@ -1,6 +1,5 @@
 const puppeteer = require('puppeteer-core');
 const argv = require('minimist')(process.argv.slice(2));
-const file = require('mz/fs');
 const delay = require('delay');
 const http = require('http');
 
@@ -27,33 +26,6 @@ let datestring = dateFormat(new Date(), "yyyymmdd");
 let basefolder = `history\\${datestring}`;
 ensureDirSync("history");
 ensureDirSync(basefolder);
-
-function getExtensionPaths(userDataDir) {
-  const extensionsPath = path.join(userDataDir, 'Default', 'Extensions');
-  const extensions = [];
-
-  if (!fs.existsSync(extensionsPath)) {
-    return extensions;
-  }
-
-  const extIds = fs.readdirSync(extensionsPath);
-  for (const extId of extIds) {
-    const extPath = path.join(extensionsPath, extId);
-    const stat = fs.statSync(extPath);
-
-    if (!stat.isDirectory() || extId === 'Temp') {
-      continue;
-    }
-
-    const versions = fs.readdirSync(extPath);
-    if (versions.length > 0) {
-      const latestVersion = versions.sort().reverse()[0];
-      extensions.push(path.join(extPath, latestVersion));
-    }
-  }
-
-  return extensions;
-}
 
 async function start() {
   let browser;
@@ -104,106 +76,42 @@ async function start() {
     console.log('Connected to existing Chrome successfully');
   } catch (err) {
     console.log(`Connection failed: ${err.message}`);
-
-    if (err.message && err.message.includes('browser is already running')) {
-      console.log('');
-      console.log('Chrome is already running with this user data directory.');
-      console.log('Please close the existing Chrome window first, then run:');
-      console.log('  node index_puppeteer.js');
-      console.log('');
-      process.exit(1);
-    }
-
-    if (err.message && err.message.includes('Target closed')) {
-      console.log('The Chrome tab was closed. Trying to reconnect...');
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      try {
-        const wsUrl = await getWebSocketDebuggerUrl();
-        browser = await puppeteer.connect({
-          browserWSEndpoint: wsUrl,
-          ignoreHTTPSErrors: true
-        });
-        console.log('Reconnected successfully');
-      } catch (reconnectErr) {
-        console.log(`Reconnection failed: ${reconnectErr.message}`);
-        console.log('Falling back to launching new browser...');
-        const userDataDir = path.resolve('D:/WebHistory/userdata');
-        const extensionPaths = getExtensionPaths(userDataDir);
-        const launchArgs = [
-          '--no-sandbox',
-          '--no-first-run',
-          `--user-data-dir=${userDataDir}`,
-          '--remote-debugging-port=9222'
-        ];
-        if (extensionPaths.length > 0) {
-          const extPathsStr = extensionPaths.map(p => path.resolve(p)).join(',');
-          launchArgs.push(`--disable-extensions-except=${extPathsStr}`);
-          launchArgs.push(`--load-extension=${extPathsStr}`);
-          console.log(`Loading ${extensionPaths.length} extensions...`);
-        }
-        browser = await puppeteer.launch({
-          executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-          headless: false,
-          args: launchArgs
-        });
-        console.log('Browser launched successfully');
-      }
-    } else {
-      console.log('No existing Chrome found, launching new browser...');
-      const userDataDir = path.resolve('D:/WebHistory/userdata');
-      const extensionPaths = getExtensionPaths(userDataDir);
-
-      const launchArgs = [
-        '--no-sandbox',
-        '--no-first-run',
-        `--user-data-dir=${userDataDir}`,
-        '--remote-debugging-port=9222'
-      ];
-
-      if (extensionPaths.length > 0) {
-        const extPathsStr = extensionPaths.map(p => path.resolve(p)).join(',');
-        launchArgs.push(`--disable-extensions-except=${extPathsStr}`);
-        launchArgs.push(`--load-extension=${extPathsStr}`);
-        console.log(`Loading ${extensionPaths.length} extensions...`);
-      }
-
-      browser = await puppeteer.launch({
-        executablePath: 'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-        headless: false,
-        args: launchArgs
-      });
-      console.log('Browser launched successfully');
-    }
+    console.log('');
+    console.log('A Chrome instance with remote debugging must already be running.');
+    console.log('You can start it with: capture_puppeteer.bat');
+    console.log('Expected endpoint: http://127.0.0.1:9222/json/version');
+    console.log('');
+    process.exit(1);
   }
 
   try {
-    fs.readFile(filePath, { encoding: 'utf-8' }, async function (err, data) {
-      if (err) {
-        console.log(err);
-        return;
+    const data = await fs.promises.readFile(filePath, { encoding: 'utf-8' });
+    const out = {};
+    const array = data.split("\n").filter(value => value.length > 0).map(value => value.trim());
+
+    for (const line of array) {
+      const name_url = line.split(" ").filter(value => value.length > 0).map(value => value.trim());
+      if (name_url.length < 2) {
+        console.warn(`Skipping invalid line in list.txt: ${line}`);
+        continue;
       }
 
-      let out = {};
+      await init(browser, name_url[1], name_url[0]);
+      out[name_url[0]] = name_url[1];
+    }
 
-      let array = data.split("\n").filter(value => value.length > 0).map(value => value.trim());
-      for (let line of array) {
-        let name_url = line.split(" ").filter(value => value.length > 0).map(value => value.trim());
-        await init(browser, name_url[1], name_url[0]);
-        out[name_url[0]] = name_url[1];
-      }
+    const buffer = Buffer.from(JSON.stringify(out, null, 2));
+    const jsonPath = `${basefolder}/files.json`;
+    await fs.promises.writeFile(jsonPath, buffer);
 
-      const buffer = new Buffer(JSON.stringify(out, null, 2));
-      const jsonPath = `${basefolder}/files.json`;
-      await file.writeFile(jsonPath, buffer);
-
-      require('child_process').exec(`start "" "${basefolder}"`);
-    });
+    require('child_process').exec(`start "" "${basefolder}"`);
   } catch (err) {
+    console.error('Failed to process list.txt or capture screenshots:', err);
+    process.exit(1);
+  } finally {
     if (browser) {
       await browser.disconnect();
     }
-    console.error('Failed to read file:', err);
-    process.exit(1);
   }
 }
 
@@ -255,7 +163,6 @@ async function init(browser, url, output) {
     console.log('Screenshot saved');
     await page.close();
   } catch (err) {
-    console.error('Exception while taking screenshot:', err);
-    process.exit(1);
+    throw err;
   }
 }
